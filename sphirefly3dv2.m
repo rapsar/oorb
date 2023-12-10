@@ -1,12 +1,12 @@
-function sff = sphirefly3dv2(varargin)
-%SPHIREFLY3D calibration-free 3D reconstruction of firefly spherical videos  
+function sff = oorb(varargin)
+% OORB calibration-free 3D reconstruction of firefly spherical videos  
 %
 % Raphael Sarfati
 % raphael.sarfati@aya.yale.edu
-% github.com/rapsar/spherifly
+% github.com/rapsar/oorb
 %
-% spherifly3d(sff)
-% spherifly3d(cyber2world)
+% oorb(sff)
+% oorb(cyber2world)
 %   
 %
 % 05/2022 -v0.1
