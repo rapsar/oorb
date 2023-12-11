@@ -1,5 +1,5 @@
 function sff = Track(sff)
-%SFFTRACK track and clean
+%TRACK track and clean
 % input and output: sff structure
 %  
 % Raphael Sarfati
@@ -10,14 +10,14 @@ function sff = Track(sff)
 
 if ~sff.prm.flag.trk
 
-    disp([datestr(now,31) ' -- Tracking started...'])
+    disp([char(datetime("now")) ' -- Tracking started...'])
 
-    sff = trk.sff_fffabcnet(sff);
+    sff = trk.fff(sff);
 
     % flag; return to workspace
     sff.prm.flag.trk = 1;
     assignin('base','sff0',sff)
-    disp([datestr(now,31) ' -- Tracking completed.'])
+    disp([char(datetime("now")) ' -- Tracking completed.'])
     
 end
 
@@ -26,14 +26,14 @@ end
 
 if ~sff.prm.flag.cln
 
-    disp([datestr(now,31) ' -- Cleaning started...'])
+    disp([char(datetime("now")) ' -- Cleaning started...'])
 
     sff = trk.sff_clean(sff);
 
     % flag; return to workspace
     sff.prm.flag.cln = 1;
     assignin('base','sff0',sff)
-    disp([datestr(now,31) ' -- Cleaning completed.'])
+    disp([char(datetime("now")) ' -- Cleaning completed.'])
 
 end
 

@@ -1,5 +1,5 @@
-function sff = sff_dk(sff)
-%SFF_DK 
+function sff = dk(sff)
+%DK estimate frame delay between two frame streams
 %   
 % RS, 05/2022
 
@@ -20,7 +20,6 @@ function [dk,res] = dkRobust(N1,N2)
 %
 % Raphael Sarfati, 02/2021
 % raphael.sarfati@aya.yale.edu
-% Peleg Lab, University of Colorado Boulder
 
 %% removes trailing zeros at the beginning
 startFrame1 = find(N1>0,1);

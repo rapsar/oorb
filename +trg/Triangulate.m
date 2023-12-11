@@ -1,5 +1,5 @@
-function sff = sffTriangulate(sff)
-%SFFTRIANGULATE calibrate and triangulate
+function sff = Triangulate(sff)
+%TRIANGULATE calibrate and triangulate
 % input and output: sff structure
 %
 % Raphael Sarfati
@@ -10,19 +10,18 @@ function sff = sffTriangulate(sff)
 
 if ~sff.prm.flag.clb
 
-    disp([datestr(now,31) ' -- Calibration started...'])
+    disp([char(datetime("now")) ' -- Calibration started...'])
 
     % time calibration
-    sff = trg.sff_dk(sff);
+    sff = trg.dk(sff);
 
     % space calibration
-    sff = trg.sff_extractCalibrationTrajectories(sff); 
-    sff = trg.sff_estimate360CameraParameters(sff); 
+    sff = trg.calibrate(sff);
 
     % flag; return to workspace
     sff.prm.flag.clb = 1;
     assignin('base','sff0',sff)
-    disp([datestr(now,31) ' -- Calibration completed.'])
+    disp([char(datetime("now")) ' -- Calibration completed.'])
 
 end
 
@@ -31,15 +30,15 @@ end
 
 if ~sff.prm.flag.trg
 
-    disp([datestr(now,31) ' -- Triangulation started...'])
+    disp([char(datetime("now")) ' -- Triangulation started...'])
 
-    sff = trg.sff_matchPoints(sff); 
-    sff = trg.sff_triangulate360(sff); 
+    sff = trg.getMatchedPoints(sff); 
+    sff = trg.xy2world(sff); 
 
     % flag; return to workspace
     sff.prm.flag.trg = 1;
     assignin('base','sff0',sff)
-    disp([datestr(now,31) ' -- Triangulation completed.'])    
+    disp([char(datetime("now")) ' -- Triangulation completed.'])    
 
 end
  
