@@ -1,5 +1,7 @@
 function prm = set(cyber2world,v)
-%SET initializes sff parameters  
+%SET initializes orb parameters  
+% cyber2world = [camera_separation camera_height];
+% v is VideoReader object
 
 % real world units
 prm.world.horzMtr = cyber2world(1);

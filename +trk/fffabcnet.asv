@@ -24,7 +24,7 @@ patchBatch = 1000;
 %% intrinsic variables
 frameRate = prm.mov.frameRate;
 bkgrWinSize = bkgrWinWidthSec*frameRate;
-patchSize = prm.trk.ffnet.Layers(1).InputSize;
+patchSize = ffnet.Layers(1).InputSize;
 
 %% if v is video object -- might not be needed
 if isobject(v)
@@ -127,7 +127,7 @@ for i=1:numberMovies
 
         % calculate new bkgr from old and differential earliest/latest frames (for speed)
         [~,m] = min(bkgrIdx);
-        bkgr = bkgr + (newFrame - bkgrStack(:,:,m))/bkgrWinSize; %%%slowest line (30%), optimize
+        bkgr = bkgr + (newFrame - bkgrStack(:,:,m))/bkgrWinSize;
 
         % update stack with new frame replacing earliest frame
         bkgrStack(:,:,m) = newFrame;
@@ -160,10 +160,12 @@ for i=1:numberMovies
         
         % classify patches once enough have been extracted
         if size(patches,4) > patchBatch
-            %classify
+
             xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
-            ff.xyt = vertcat(ff.xyt,xytOut);            
-            % re-initialize arrays
+
+            ff.xyt = vertcat(ff.xyt,xytOut);
+            
+            % empty arrays
             patches = [];
             xyt = [];
         end
@@ -184,10 +186,18 @@ for i=1:numberMovies
 
     end
     
-    xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
-    ff.xyt = vertcat(ff.xyt,xytOut);
+    % new
+    % Batch classify all patches
+    pred = classify(prm.trk.ffnet, patches);
+    % Find indices of patches classified as firefly flashes
+    fireflyIndices = logical(double(pred) == 1);  % assuming '1' indicates a positive classification
+    % Map indices back to xy coordinates
+    xyOut = xyt(fireflyIndices, :);
+    % add to list
+    ff.xyt = vertcat(ff.xyt,xyOut);
 
     
+
 end
 
 
@@ -266,6 +276,97 @@ xytOut = xyt(fireflyIndices, :);
 end
 
 
+% %%
+% function xyOut = ffnetFilterFrameNO(frame, xy, ffnet)
+% % Extract local patches around possible flash locations and classify them using a feedforward neural network
+% 
+% patchSize = 65;
+% numChannels = size(frame, 3);
+% numXY = size(xy, 1);
+% 
+% halfPatchSize = floor(patchSize/2);
+% 
+% % % Reshape frame into a 2D array where each column represents a pixel
+% % pixelData = reshape(frame, [], numChannels)';
+% 
+% % Preallocate array for patches
+% patches = zeros(patchSize,patchSize,numChannels,numXY,'uint8');
+% 
+% % Round coordinates
+% xy = round(xy);
+% 
+% % Loop over possible flash locations and extract patches
+% for i = 1:numXY
+%     x = xy(i, 1);
+%     y = xy(i, 2);
+% 
+%     try
+%     % Extract local patch around flash location
+%     xmin = x - halfPatchSize;
+%     xmax = x + halfPatchSize;
+%     ymin = y - halfPatchSize;
+%     ymax = y + halfPatchSize;
+%     patches(:,:,:,i) = frame(ymin:ymax, xmin:xmax, :);
+%     %patch = reshape(patch, [], numChannels)';
+%     end
+% 
+% %     % Store patch in array
+% %     patches(:, i) = patch(:);
+% end
+% 
+% % Classify all patches using feedforward neural network
+% pred = classify(ffnet, patches);
+% 
+% % Find indices of patches classified as firefly flashes
+% fireflyIndices = str2num(char(pred));
+% fireflyIndices = logical(fireflyIndices);
+% 
+% % Map indices back to xy coordinates
+% xyOut = xy(fireflyIndices, :);
+% 
+% end
+
+% function xyOut = ffnetFilterFrame(frame, xy, ffnet)
+% % Optimized function to extract local patches and classify using CNN
+% 
+% patchSize = 65;
+% halfPatchSize = floor(patchSize / 2);
+% 
+% % Ensure coordinates are integers
+% xy = round(xy);
+% 
+% % Convert frame to single precision for compatibility with CNN and reduce memory
+% frame = single(frame);
+% 
+% % Preallocate the patch array in single precision
+% numXY = size(xy, 1);
+% patches = zeros(patchSize, patchSize, size(frame, 3), numXY, 'single');
+% 
+% % Vectorized extraction of patches using indexing
+% for i = 1:numXY
+%     x = xy(i, 1);
+%     y = xy(i, 2);
+% 
+%     % Define patch boundaries with clamping to image size
+%     xmin = max(1, x - halfPatchSize);
+%     xmax = min(size(frame, 2), x + halfPatchSize);
+%     ymin = max(1, y - halfPatchSize);
+%     ymax = min(size(frame, 1), y + halfPatchSize);
+% 
+%     % Extract patch and place it in the preallocated array
+%     patches(1:(ymax-ymin+1), 1:(xmax-xmin+1), :, i) = frame(ymin:ymax, xmin:xmax, :);
+% end
+% 
+% % Batch classify all patches
+% pred = classify(ffnet, patches);
+% 
+% % Find indices of patches classified as firefly flashes
+% fireflyIndices = strcmp(pred, '1');  % assuming '1' indicates a positive classification
+% 
+% % Map indices back to xy coordinates
+% xyOut = xy(fireflyIndices, :);
+% 
+% end
 
 
 
