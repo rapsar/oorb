@@ -10,6 +10,10 @@
 - **Calibration-free triangulation**: estimates camera delay and pose from the data, no in-field calibration needed
 - **Trajectory generation**: concatenates flashes into streaks and trajectories
 
+## To-Do
+- optimize tracking for speed (ongoing)
+- Python version (soon)
+
 ## Installation
 Clone the repository:
 ```bash
