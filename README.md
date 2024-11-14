@@ -1,14 +1,14 @@
 ![qroclbp9qe8m3d9hahj](https://github.com/user-attachments/assets/0fa0d3f3-88ec-4a1f-ab0c-2f1e7c874d61)
 
-# Oorb: Firefly Tracking and Background Compensation
+# OOrb: tracking and triangulating firefly flashes in steroscopic 360-degree video recordings
 
-**Oorb** is an adaptive background compensation and tracking software for analyzing video data of moving objects, with a focus on bright object identification. The software includes the **Orbit** class, which provides tools for processing video frames, removing background noise, and identifying and tracking bright objects, such as fireflies, in complex video environments.
+**oorb** is a Matlab project to analyse in-field recordings of firefly display. 
 
 ## Features
-- **Adaptive Background Removal**: Dynamically adjusts the background model to highlight moving objects.
-- **Bright Object Detection**: Identifies and tracks bright objects using customizable thresholding and binarization.
-- **Object Trajectories**: Extracts and processes object trajectories in a 3D environment.
-- **Geolocation and Notification**: Includes functionality for IP-based geolocation and email notifications upon task completion.
+- **Orbit class**: defines Orbit class to store and access intermediate data (new)
+- **CNN based flash detection**: reliable flash identification based on trained firefly-net network
+- **Calibration-free triangulation**: estimates camera delay and pose from the data, no in-field calibration needed
+- **Trajectory generation**: concatenates flashes into streaks and trajectories
 
 ## Installation
 Clone the repository:
