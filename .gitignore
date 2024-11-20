@@ -1,7 +1,4 @@
-sff0.mat
-sff00.mat
-sff1.mat
-/*.csv
-+utl/blink.m
+*.DS_Store
+*.csv
 private/
-.DS_Store
+
