@@ -52,6 +52,7 @@ prm.mov.frameDim = [v.Width v.Height];
 prm.mov.frameRate = v.FrameRate; 
 
 % frame units
+prm.trk.frameRate = prm.mov.frameRate;
 prm.trk.bkgrStackFrm = round(prm.trk.bkgrStackSec*prm.mov.frameRate);
 prm.cln.initlBufferFrm = round(prm.cln.initlBufferSec*prm.mov.frameRate);
 prm.cln.finalBufferFrm = round(prm.cln.finalBufferSec*prm.mov.frameRate);

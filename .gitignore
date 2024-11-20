@@ -1,10 +1,6 @@
 sff0.mat
 sff00.mat
 sff1.mat
-xyztkj.csv
-xyztkj_20241112T141520.csv
-xyztkj_20241110T210335.csv
-xyztkj_20241110T205933.csv
-xyztkj_20241110T195958.csv
-xyztkj_20241025T175237.csv
+/*.csv
 +utl/blink.m
+private/

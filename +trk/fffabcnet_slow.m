@@ -1,4 +1,4 @@
-function ff = fffabcnet(v,prm)
+function ff = fffabcnet_slow(v,prm)
 %FFFABCNET Find FireFlies Adaptive Background Compensation
 %   Remove background and identify bright objects in foreground.
 %   Input:  v -- video object, called from v = VideoReader('...')
@@ -23,8 +23,13 @@ patchBatch = 1000;
 
 %% intrinsic variables
 frameRate = prm.mov.frameRate;
-bkgrWinSize = bkgrWinWidthSec*frameRate;
-patchSize = ffnet.Layers(1).InputSize;
+bkgrWinSize = round(bkgrWinWidthSec*frameRate);
+invBkgrWinSize = 1/bkgrWinSize;
+patchSize = prm.trk.ffnet.Layers(1).InputSize;
+frameDim = prm.mov.frameDim;
+numPixels = frameDim(1) * frameDim(2);
+
+alpha = 1/30;
 
 %% if v is video object -- might not be needed
 if isobject(v)
@@ -42,6 +47,9 @@ w = VideoReader(v{1});
 
 %% initial background stack
 % create background stack or use from previous movie
+
+bkgrStack = single(zeros(numPixels, bkgrWinSize));
+
 if nargin == 2
     
     % build initial background stack
@@ -57,7 +65,8 @@ if nargin == 2
         frame = single(frame);
         
         % add to background stack
-        bkgrStack(:,:,frameGlobalIdx) = frame;
+        %bkgrStack(:,:,frameGlobalIdx) = frame;
+        bkgrStack(:,frameGlobalIdx) = frame(:);
         
         % update frame counter
         frameGlobalIdx = frameGlobalIdx+1;
@@ -79,7 +88,11 @@ else
 end
 
 % initial background frame
-bkgr = mean(bkgrStack,3);
+%bkgr = mean(bkgrStack,3);
+bkgr = mean(bkgrStack,2);
+
+%bkgr = reshape(bkgr, [frameDim(2) frameDim(1)]);
+bkgr = frame;
 
 % initialize output
 ff.xyt = [];
@@ -124,34 +137,45 @@ for i=1:numberMovies
 
         % use single precision, for speed
         newFrame = single(newFrame);
+        %newFrameVec = newFrame(:);
 
         % calculate new bkgr from old and differential earliest/latest frames (for speed)
-        [~,m] = min(bkgrIdx);
-        bkgr = bkgr + (newFrame - bkgrStack(:,:,m))/bkgrWinSize;
+        %[~,m] = min(bkgrIdx);
+        %oldFrame = bkgrStack(:,:,m);
+        %oldFrame = bkgrStack(:,m);
+        %bkgr = bkgr + (newFrameVec - oldFrame)*invBkgrWinSize; %%%slowest line (30%), optimize
+        
 
         % update stack with new frame replacing earliest frame
-        bkgrStack(:,:,m) = newFrame;
-        bkgrIdx(m) = frameGlobalIdx;
+        %bkgrStack(:,:,m) = newFrame;
+        %bkgrStack(:,m) = newFrameVec;
+        %bkgrIdx(m) = frameGlobalIdx;
 
         % grab current frame from stack
-        currentFrameIdx = frameGlobalIdx;
-        f = (bkgrIdx == currentFrameIdx);
-        currentFrame = bkgrStack(:,:,f);
+        %currentFrameIdx = frameGlobalIdx;
+        %f = (bkgrIdx == currentFrameIdx);
+        %currentFrame = bkgrStack(:,:,f);
+        %currentFrame = bkgrStack(:,f);
 
         % calculate foreground
-        frgr = (currentFrame - bkgr);
+        %frgr = (currentFrame - bkgr);
+        frgr = (newFrame - bkgr);
         frgr = uint8(frgr);
+        %frgr = uint8(reshape(frgr, [frameDim(2) frameDim(1)]));
         if blurRadius > 0.2
             frgr = imgaussfilt(frgr,blurRadius); %slow
         end
 
         % binarize foreground and analyze connected components
         bw = imbinarize(frgr,bwThr);
-        rp = regionprops(bw,newFrame,'Centroid','Area','Eccentricity','MeanIntensity');
+        rp = regionprops(bw,newFrame,'Centroid'); %,'Area','Eccentricity','MeanIntensity');
+
+        bkgr = (1-alpha)*bkgr + alpha*newFrame;
 
         n = length(rp);
 
-        xy = [vertcat(rp.Centroid) repmat(currentFrameIdx,n,1)];
+        %xy = [vertcat(rp.Centroid) repmat(currentFrameIdx,n,1)];
+        xy = [vertcat(rp.Centroid) repmat(frameGlobalIdx,n,1)];
         xy = round(xy); 
         xyt = vertcat(xyt,xy); 
         if ~isempty(xy)
@@ -160,12 +184,10 @@ for i=1:numberMovies
         
         % classify patches once enough have been extracted
         if size(patches,4) > patchBatch
-
+            %classify
             xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
-
-            ff.xyt = vertcat(ff.xyt,xytOut);
-            
-            % empty arrays
+            ff.xyt = vertcat(ff.xyt,xytOut);            
+            % re-initialize arrays
             patches = [];
             xyt = [];
         end
@@ -175,7 +197,8 @@ for i=1:numberMovies
         %     vertcat(rp.Eccentricity)...
         %     vertcat(rp.MeanIntensity)...
         %     repmat(currentFrameIdx,n,1)];
-        ff.i(currentFrameIdx) = mean(newFrame,'all');
+        %ff.i(currentFrameIdx) = mean(newFrame,'all');
+        ff.i(frameGlobalIdx) = mean(newFrame,'all');
 
         % progress
         wb = utl.fastwaitbar(frameLocalIdx/nFramesApprox);
@@ -186,18 +209,10 @@ for i=1:numberMovies
 
     end
     
-    % new
-    % Batch classify all patches
-    pred = classify(prm.trk.ffnet, patches);
-    % Find indices of patches classified as firefly flashes
-    fireflyIndices = logical(double(pred) == 1);  % assuming '1' indicates a positive classification
-    % Map indices back to xy coordinates
-    xyOut = xyt(fireflyIndices, :);
-    % add to list
-    ff.xyt = vertcat(ff.xyt,xyOut);
+    xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
+    ff.xyt = vertcat(ff.xyt,xytOut);
 
     
-
 end
 
 
@@ -276,97 +291,6 @@ xytOut = xyt(fireflyIndices, :);
 end
 
 
-% %%
-% function xyOut = ffnetFilterFrameNO(frame, xy, ffnet)
-% % Extract local patches around possible flash locations and classify them using a feedforward neural network
-% 
-% patchSize = 65;
-% numChannels = size(frame, 3);
-% numXY = size(xy, 1);
-% 
-% halfPatchSize = floor(patchSize/2);
-% 
-% % % Reshape frame into a 2D array where each column represents a pixel
-% % pixelData = reshape(frame, [], numChannels)';
-% 
-% % Preallocate array for patches
-% patches = zeros(patchSize,patchSize,numChannels,numXY,'uint8');
-% 
-% % Round coordinates
-% xy = round(xy);
-% 
-% % Loop over possible flash locations and extract patches
-% for i = 1:numXY
-%     x = xy(i, 1);
-%     y = xy(i, 2);
-% 
-%     try
-%     % Extract local patch around flash location
-%     xmin = x - halfPatchSize;
-%     xmax = x + halfPatchSize;
-%     ymin = y - halfPatchSize;
-%     ymax = y + halfPatchSize;
-%     patches(:,:,:,i) = frame(ymin:ymax, xmin:xmax, :);
-%     %patch = reshape(patch, [], numChannels)';
-%     end
-% 
-% %     % Store patch in array
-% %     patches(:, i) = patch(:);
-% end
-% 
-% % Classify all patches using feedforward neural network
-% pred = classify(ffnet, patches);
-% 
-% % Find indices of patches classified as firefly flashes
-% fireflyIndices = str2num(char(pred));
-% fireflyIndices = logical(fireflyIndices);
-% 
-% % Map indices back to xy coordinates
-% xyOut = xy(fireflyIndices, :);
-% 
-% end
-
-% function xyOut = ffnetFilterFrame(frame, xy, ffnet)
-% % Optimized function to extract local patches and classify using CNN
-% 
-% patchSize = 65;
-% halfPatchSize = floor(patchSize / 2);
-% 
-% % Ensure coordinates are integers
-% xy = round(xy);
-% 
-% % Convert frame to single precision for compatibility with CNN and reduce memory
-% frame = single(frame);
-% 
-% % Preallocate the patch array in single precision
-% numXY = size(xy, 1);
-% patches = zeros(patchSize, patchSize, size(frame, 3), numXY, 'single');
-% 
-% % Vectorized extraction of patches using indexing
-% for i = 1:numXY
-%     x = xy(i, 1);
-%     y = xy(i, 2);
-% 
-%     % Define patch boundaries with clamping to image size
-%     xmin = max(1, x - halfPatchSize);
-%     xmax = min(size(frame, 2), x + halfPatchSize);
-%     ymin = max(1, y - halfPatchSize);
-%     ymax = min(size(frame, 1), y + halfPatchSize);
-% 
-%     % Extract patch and place it in the preallocated array
-%     patches(1:(ymax-ymin+1), 1:(xmax-xmin+1), :, i) = frame(ymin:ymax, xmin:xmax, :);
-% end
-% 
-% % Batch classify all patches
-% pred = classify(ffnet, patches);
-% 
-% % Find indices of patches classified as firefly flashes
-% fireflyIndices = strcmp(pred, '1');  % assuming '1' indicates a positive classification
-% 
-% % Map indices back to xy coordinates
-% xyOut = xy(fireflyIndices, :);
-% 
-% end
 
 
 

@@ -3,7 +3,7 @@ function orb = fff(orb)
 
 v1 = orb.prm.mov.v1; 
 v2 = orb.prm.mov.v2;
-prm = orb.prm;
+prm = orb.prm.trk;
 
 %% process gp1
 % display start time
@@ -21,7 +21,6 @@ fprintf('\n'), disp(char(datetime("now")))
 disp('cam2')
 
 % process
-%sff.gp2 = trk.fffabcnet(v2,prm);
 ff2 = trk.fffabcnet(v2,prm);
 orb.xyt2 = ff2.xyt;
 

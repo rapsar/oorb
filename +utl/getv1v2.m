@@ -6,7 +6,8 @@ root = pwd;
 [file,path] = utl.uiget(pwd,'MultiSelect',true);
 
 if length(path) == 1
-    [file(2),path(2)] = utl.uiget(pwd,'MultiSelect',true);
+    %[file(2),path(2)] = utl.uiget(pwd,'MultiSelect',true);
+    [file(2),path(2)] = utl.uiget(path,'MultiSelect',true);
 elseif length(path) > 2
     error('Select only 2 video files/folders.')
 end

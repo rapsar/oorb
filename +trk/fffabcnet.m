@@ -1,35 +1,27 @@
 function ff = fffabcnet(v,prm)
-%FFFABCNET Find FireFlies Adaptive Background Compensation
-%   Remove background and identify bright objects in foreground.
-%   Input:  v -- video object, called from v = VideoReader('...')
-%           bwth -- binarize threshold, typically 0.1 (0.07 - 0.15)  
-%   Ouput:  ff -- firefly structure, see code for details
-%
-% Raphael Sarfati, 06/2023
-% raphael.sarfati@aya.yale.edu
+%FFFABCNET Find FireFlies Adaptive Background Compensation + firefleyeNET
+%   Remove background and identify bright objects in foreground with ffnet
+%   Input:  v -- VideoReader object or cellarray of videofile paths
+%           prm -- structure of parameters  
+%   Ouput:  ff -- firefly structure
 
 %% processing parameters
 % blurring radius for frame processing (default = 1)
-blurRadius = 0; %prm.trk.blurRadiusPxl;
-
-% railing background window size, in seconds (default = 1)
-bkgrWinWidthSec = prm.trk.bkgrStackSec; 
+blurRadius = 0; %prm.blurRadiusPxl; 
 
 % threshold for image binarization
-bwThr = prm.trk.bwThr;
+bwThr = prm.bwThr;
 
 % Size for batch processing of patches
 patchBatch = 1000;
 
-%% intrinsic variables
-frameRate = prm.mov.frameRate;
-bkgrWinSize = bkgrWinWidthSec*frameRate;
-patchSize = prm.trk.ffnet.Layers(1).InputSize;
 
-%% if v is video object -- might not be needed
-if isobject(v)
-    v{1} = v;
-end
+%% intrinsic variables
+frameRate = prm.frameRate;
+patchSize = prm.ffnet.Layers(1).InputSize;
+
+% alpha for EWMA
+alpha = 1/prm.bkgrStackFrm; %1/30 or 1/60, typically
 
 %% number of movies
 numberMovies = length(v);
@@ -37,51 +29,7 @@ numberMovies = length(v);
 %% global frame counter
 frameGlobalIdx = 1;
 
-%% initialize first movie
-w = VideoReader(v{1});
-
-%% initial background stack
-% create background stack or use from previous movie
-if nargin == 2
-    
-    % build initial background stack
-    while frameGlobalIdx <= bkgrWinSize
-        
-        % read frame
-        frame = readFrame(w);
-        
-        % use only green channel
-        frame = frame(:,:,2);
-        
-        % use single precision, for speed
-        frame = single(frame);
-        
-        % add to background stack
-        bkgrStack(:,:,frameGlobalIdx) = frame;
-        
-        % update frame counter
-        frameGlobalIdx = frameGlobalIdx+1;
-        
-    end
-    
-    % frame index within the stack
-    bkgrIdx = 1:bkgrWinSize;
-    
-elseif nargin == 3
-    
-    % use stack from previous movie
-    bkgrStack = ffprior.bkgrStack;
-    bkgrIdx = ffprior.bkgrIdx - max(ffprior.bkgrIdx);
-    
-else
-    error('incorrect number of input arguments')
-    
-end
-
-% initial background frame
-bkgr = mean(bkgrStack,3);
-
-% initialize output
+%% initialize output
 ff.xyt = [];
 
 %% loop through all movies
@@ -92,24 +40,29 @@ for i=1:numberMovies
     fprintf('\n')
     disp(datetime("now"))
     disp(['movie ' num2str(i) ' of ' num2str(numberMovies)])
-
-    % re-initialize waitbar
-    %utl.fastwaitbar reset
-
-
-    %% re-initialize movie since using readFrame
-    if i>1
+    
+    % load movie
+    if isobject(v)
+        w = v;
+    else
         w = VideoReader(v{i});
     end
 
     nFramesApprox = w.Duration*frameRate;
+
+    % initialization
     frameLocalIdx = 1;
-    
-    % initialize patches array
     patches = [];
     xyt = [];
-    %patches = zeros(65,65,3,1000,'uint8');
-    %xyt = zeros(1000,3);
+
+    % initialize background
+    frame = readFrame(w);
+    bkgr = single(frame(:,:,2));
+
+    % update frame counter
+    frameGlobalIdx = frameGlobalIdx+1;
+    frameLocalIdx = frameLocalIdx+1;
+
 
     %% processing movie
 
@@ -125,40 +78,32 @@ for i=1:numberMovies
         % use single precision, for speed
         newFrame = single(newFrame);
 
-        % calculate new bkgr from old and differential earliest/latest frames (for speed)
-        [~,m] = min(bkgrIdx);
-        bkgr = bkgr + (newFrame - bkgrStack(:,:,m))/bkgrWinSize; %%%slowest line (30%), optimize
-
-        % update stack with new frame replacing earliest frame
-        bkgrStack(:,:,m) = newFrame;
-        bkgrIdx(m) = frameGlobalIdx;
-
-        % grab current frame from stack
-        currentFrameIdx = frameGlobalIdx;
-        f = (bkgrIdx == currentFrameIdx);
-        currentFrame = bkgrStack(:,:,f);
-
         % calculate foreground
-        frgr = (currentFrame - bkgr);
-        frgr = uint8(frgr);
+        frgr = uint8(newFrame - bkgr);
+
+        % update background (EWMA)
+        bkgr = (1-alpha)*bkgr + alpha*newFrame;
+        
+        % blurs, if necessary (alternative: dilate bw?)
         if blurRadius > 0.2
             frgr = imgaussfilt(frgr,blurRadius); %slow
         end
 
         % binarize foreground and analyze connected components
         bw = imbinarize(frgr,bwThr);
-        rp = regionprops(bw,newFrame,'Centroid','Area','Eccentricity','MeanIntensity');
-
-        n = length(rp);
-
-        xy = [vertcat(rp.Centroid) repmat(currentFrameIdx,n,1)];
+        rp = regionprops(bw,newFrame,'Centroid'); %,'Area','Eccentricity','MeanIntensity');
+        
+        % collect positions
+        xy = [vertcat(rp.Centroid) repmat(frameGlobalIdx,length(rp),1)];
         xy = round(xy); 
         xyt = vertcat(xyt,xy); 
+        
+        % extract patches
         if ~isempty(xy)
             patches = extractPatches(frame,xy,patches,patchSize);
         end
         
-        % classify patches once enough have been extracted
+        % classify patches by batches
         if size(patches,4) > patchBatch
             %classify
             xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
@@ -173,10 +118,12 @@ for i=1:numberMovies
         %     vertcat(rp.Eccentricity)...
         %     vertcat(rp.MeanIntensity)...
         %     repmat(currentFrameIdx,n,1)];
-        ff.i(currentFrameIdx) = mean(newFrame,'all');
+        %ff.i(currentFrameIdx) = mean(newFrame,'all');
+        ff.i(frameGlobalIdx) = mean(newFrame,'all');
 
         % progress
-        wb = utl.fastwaitbar(frameLocalIdx/nFramesApprox);
+        %wb = utl.fastwaitbar(frameLocalIdx/nFramesApprox);
+        utl.fastwaitbar(frameLocalIdx/nFramesApprox,'Processing frames...');
 
         % update frame counter
         frameGlobalIdx = frameGlobalIdx+1;
