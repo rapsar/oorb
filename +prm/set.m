@@ -22,7 +22,7 @@ prm.flag.trj = false; %trajectory
 % track
 prm.trk.bkgrStackSec = 2;
 prm.trk.bwThr = 0.1;
-prm.trk.blurRadiusPxl = 1;
+prm.trk.blurRadiusPxl = 0;
 prm.trk.ffnetName = 'ffnet20230607.mat';
 prm.trk.ffnet = structfun(@(x) x, load(prm.trk.ffnetName));
 

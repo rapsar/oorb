@@ -4,10 +4,12 @@ classdef Orbit < handle
         prm = struct;   % Parameters
         xyt1 = [];      % Array of xyt coordinates for Camera 1 [x y t good calibset match]
         xyt2 = [];      % Array of xyt coordinates for Camera 2 [x y t good calibset match]
-        xyzt = [];      % Array of xyzt 3D coordinates [x y z t(sec) strk traj]
+        xyzt = [];      % Array of xyzt 3D coordinates [x y z t(frame) strk traj t(seconds)]
     end
     
     %% Methods
+    % TODO:
+    
     methods
         function obj = Orbit()
             % Constructor to initialize xyt1 and xyt2
@@ -99,6 +101,37 @@ classdef Orbit < handle
             trj = mat2cell(xyztkj,rowDist);
         end
 
+        function plot1(obj)
+            % Plot .xyt1
+            xyt = obj.good(1);
+            figure,
+            scatter(xyt(:,1),xyt(:,2),10,xyt(:,3),'filled')
+            axis equal ij, box on
+            xlim([0 obj.prm.mov.frameWidth])
+            ylim([0 obj.prm.mov.frameHeight])
+        end
+
+
+        function plot2(obj)
+            % Plot .xyt2
+            xyt = obj.good(2);
+            figure,
+            scatter(xyt(:,1),xyt(:,2),10,xyt(:,3),'filled')
+            axis equal ij, box on
+            xlim([0 obj.prm.mov.frameWidth])
+            ylim([0 obj.prm.mov.frameHeight])
+        end
+
+        function plot3(obj)
+            % Plot .xyzt
+            figure,
+            scatter3(obj.xyzt(:,1),obj.xyzt(:,2),obj.xyzt(:,3),10,obj.xyzt(:,4),'filled')
+            axis equal
+            xlim([-10 10]), xlabel('x (m)')
+            ylim([-10 10]), ylabel('y (m)')
+            zlim([-10 10]), zlabel('z (m)')
+        end
+
         function reset(obj, arg)
             % Method to reset flags
             switch arg
@@ -123,6 +156,7 @@ classdef Orbit < handle
                 obj.prm.flag.(flagsToReset{i}) = false;
             end
         end
+
 
     end
     

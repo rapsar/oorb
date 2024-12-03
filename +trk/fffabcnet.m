@@ -7,7 +7,7 @@ function ff = fffabcnet(v,prm)
 
 %% processing parameters
 % blurring radius for frame processing (default = 1)
-blurRadius = 0; %prm.blurRadiusPxl; 
+blurRadius = prm.blurRadiusPxl; 
 
 % threshold for image binarization
 bwThr = prm.bwThr;
@@ -106,7 +106,7 @@ for i=1:numberMovies
         % classify patches by batches
         if size(patches,4) > patchBatch
             %classify
-            xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
+            xytOut = classifyPatches(xyt,patches,prm.ffnet);
             ff.xyt = vertcat(ff.xyt,xytOut);            
             % re-initialize arrays
             patches = [];
@@ -131,7 +131,7 @@ for i=1:numberMovies
 
     end
     
-    xytOut = classifyPatches(xyt,patches,prm.trk.ffnet);
+    xytOut = classifyPatches(xyt,patches,prm.ffnet);
     ff.xyt = vertcat(ff.xyt,xytOut);
 
     
