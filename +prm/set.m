@@ -21,16 +21,20 @@ prm.flag.trj = false; %trajectory
 
 % track
 prm.trk.bkgrStackSec = 2;
-prm.trk.bwThr = 0.1;
+prm.trk.bwThr = 0.2;
 prm.trk.blurRadiusPxl = 0;
-prm.trk.ffnetName = 'ffnet20230607.mat';
+prm.trk.ffnetName = 'ffnet20241208.mat';
 prm.trk.ffnet = structfun(@(x) x, load(prm.trk.ffnetName));
+prm.trk.classifyThr = 0.98; 
 
 % clean
+prm.cln.type = 'none';          % none nmax bins area
 prm.cln.initlBufferSec = 60;
 prm.cln.finalBufferSec = 60;
 prm.cln.flashMinBrightUI8 = 30;
-prm.cln.areaOutlierThr = 4;
+prm.cln.nMax = 30;              % nmax
+prm.cln.xybinsMaxPrb = 0.001;   % bins % make dynamic with outlier?
+prm.cln.areaOutlierThr = 4;     % area
 
 % triangulate
 prm.clb.estMethod = 'minSearch';
@@ -46,6 +50,8 @@ prm.trj.linkMinLagSec = 0;
 prm.trj.linkMaxLagSec = 1; 
 
 % intrinsic
+prm.mov.movieName = v.Name;
+prm.mov.moviePath = v.Path;
 prm.mov.frameWidth = v.Width;
 prm.mov.frameHeight = v.Height;
 prm.mov.frameDim = [v.Width v.Height];

@@ -20,12 +20,14 @@ if ~isempty(file{1})                    %video files selected
 else                                    % video folders selected
     cd(path(1))
     vid = dir('*.MP4');
+    vid = vid(~startsWith({vid.name}, '._')); % removes AppleDouble
     for i=1:length(vid)
         v1{i} = fullfile(path(1),vid(i).name);
     end
 
     cd(path(2))
     vid = dir('*.MP4');
+    vid = vid(~startsWith({vid.name}, '._')); % removes AppleDouble
     for i=1:length(vid)
         v2{i} = fullfile(path(2),vid(i).name);
     end

@@ -103,10 +103,10 @@ for i=1:numberMovies
             patches = extractPatches(frame,xy,patches,patchSize);
         end
         
-        % classify patches by batches
+        % classify patches by batches % use minibatchpredict instead??
         if size(patches,4) > patchBatch
             %classify
-            xytOut = classifyPatches(xyt,patches,prm.ffnet);
+            xytOut = classifyPatches(xyt,patches,prm.ffnet,prm.classifyThr);
             ff.xyt = vertcat(ff.xyt,xytOut);            
             % re-initialize arrays
             patches = [];
@@ -131,7 +131,7 @@ for i=1:numberMovies
 
     end
     
-    xytOut = classifyPatches(xyt,patches,prm.ffnet);
+    xytOut = classifyPatches(xyt,patches,prm.ffnet,prm.classifyThr);
     ff.xyt = vertcat(ff.xyt,xytOut);
 
     
@@ -168,8 +168,8 @@ patches = zeros([patchSize numXY], 'uint8');
 
 % Vectorized extraction of patches using indexing
 for i = 1:numXY
-    x = xy(i, 1);
-    y = xy(i, 2);
+    x = xy(i, 2); % Correct... why? check and validate
+    y = xy(i, 1);
     
     % % Define patch boundaries with clamping to image size
     % xmin = max(1, x - halfPatchSize);
@@ -201,16 +201,27 @@ patchesOut = cat(4,patchesIn,patches);
 end
 
 
-function xytOut = classifyPatches(xyt,patches,ffnet)
+function xytOut = classifyPatches(xyt,patches,ffnet,threshold)
 
-% Batch classify all patches
-pred = classify(ffnet, patches);
+% Predict flsh/bkgr class
+pred = predict(ffnet, patches);
 % Find indices of patches classified as firefly flashes
-fireflyIndices = logical(double(pred) == 1);
+fireflyIndices = pred(:,1) > threshold;
 % Map indices back to xy coordinates
 xytOut = xyt(fireflyIndices, :);
 
 end
+
+% function xytOut = classifyPatches(xyt,patches,ffnet)
+% 
+% % Batch classify all patches
+% pred = classify(ffnet, patches);
+% % Find indices of patches classified as firefly flashes
+% fireflyIndices = logical(double(pred) == 1);
+% % Map indices back to xy coordinates
+% xytOut = xyt(fireflyIndices, :);
+% 
+% end
 
 
 

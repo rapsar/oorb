@@ -8,9 +8,10 @@ classdef Orbit < handle
     end
     
     %% Methods
-    % TODO:
+    % TODO: add raw for good so applies to plot1 etc.
     
     methods
+
         function obj = Orbit()
             % Constructor to initialize xyt1 and xyt2
         end
@@ -111,7 +112,6 @@ classdef Orbit < handle
             ylim([0 obj.prm.mov.frameHeight])
         end
 
-
         function plot2(obj)
             % Plot .xyt2
             xyt = obj.good(2);
@@ -156,7 +156,6 @@ classdef Orbit < handle
                 obj.prm.flag.(flagsToReset{i}) = false;
             end
         end
-
 
     end
     
